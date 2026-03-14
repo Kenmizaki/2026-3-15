@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>卒所パーティー タイムテーブル</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html {
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', sans-serif;
+      background: #f4f4f4;
+      padding: 10px;
+      font-size: 18px;
+      line-height: 1.6;
+      color: #2e2e2e;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 16px;
+    }
+
+    header h1 {
+      font-size: 28px;
+      font-weight: 700;
+    }
+
+    header p {
+      font-size: 18px;
+      color: #666;
+    }
+
+    .loading {
+      text-align: center;
+      font-size: 18px;
+      padding: 40px 0;
+    }
+
+    .spinner {
+      border: 3px solid #eee;
+      border-top: 3px solid #333;
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      animation: spin 1s linear infinite;
+      margin: 16px auto;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .error {
+      background: #f44336;
+      color: #fff;
+      padding: 16px;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 16px;
+    }
+
+    .cards-container {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 8px;
+      padding: 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      word-break: break-word;
+    }
+
+    .card-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #2e2e2e;
+      margin-bottom: 6px;
+      line-height: 1.4;
+    }
+
+    .card-staff {
+      font-size: 16px;
+      color: #2e2e2e;
+      line-height: 1.5;
+      margin-bottom: 6px;
+    }
+
+    .group-divider {
+      border-top: 1px solid #e0e0e0;
+      margin-top: 10px;
+      padding-top: 10px;
+    }
+
+    .group-staff {
+      border-top: 1px solid #e0e0e0;
+      margin-top: 10px;
+      padding-top: 8px;
+      font-size: 16px;
+      color: #2e2e2e;
+    }
+
+    .card-links {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 15px;
+      color: #2e2e2e;
+    }
+
+    .card-links a {
+      color: #1a73e8;
+      text-decoration: underline;
+      word-break: break-all;
+    }
+
+    .empty-state {
+      padding: 40px 10px;
+      text-align: center;
+      color: #999;
+      font-size: 18px;
+    }
+
+    footer {
+      text-align: center;
+      color: #aaa;
+      font-size: 13px;
+      margin-top: 24px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>卒所パーティー</h1>
+    <p>タイムテーブル</p>
+  </header>
+
+  <div id="content">
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>読み込み中...</p>
+    </div>
+  </div>
+
+  <footer>リアルタイムスケジュール</footer>
+
+  <script>
+    function escapeHtml(t) {
+      var d = document.createElement('div');
+      d.textContent = t;
+      return d.innerHTML;
+    }
+
+    function nl2br(t) {
+      return escapeHtml(t).replace(/\n/g, '<br>');
+    }
+
+    function convertUrlsToLinks(t) {
+      if (!t) return '';
+      return t.replace(/(https?:\/\/[^\s<>"{}|\\^`\[\]]*)/g, function(url) {
+        var s = url.length > 40 ? url.substring(0, 40) + '...' : url;
+        return '<a href="' + escapeHtml(url) + '" target="_blank">' + escapeHtml(s) + '</a>';
+      });
+    }
+
+    function isBreak(p) {
+      return p && ['歓談','昼食','片付','撤収'].some(function(k) { return p.includes(k); });
+    }
+
+    function renderLink(item, label) {
+      if (!item || !item.text || !item.text.trim()) return '';
+      if (item.url) {
+        return '<div>' + label + '<a href="' + escapeHtml(item.url) + '" target="_blank">' + nl2br(item.text) + '</a></div>';
+      }
+      return '<div>' + label + convertUrlsToLinks(item.text) + '</div>';
+    }
+
+    function renderSingleItem(item, showDivider) {
+      var h = '';
+      if (showDivider) h += '<div class="group-divider">';
+      else h += '<div>';
+      var title = item.time;
+      if (item.program && item.program.trim()) title += '　' + item.program;
+      h += '<div class="card-title">' + nl2br(title) + '</div>';
+      if (item.staff && item.staff.length > 0) {
+        h += '<div class="card-staff">' + item.staff.map(function(s) { return nl2br(s); }).join('<br>') + '</div>';
+      }
+      var links = '';
+      if (item.projectors) item.projectors.forEach(function(p) { links += renderLink(p, '🖥 '); });
+      if (item.bgms) item.bgms.forEach(function(b) { links += renderLink(b, '🎵 '); });
+      if (links) h += '<div class="card-links">' + links + '</div>';
+      h += '</div>';
+      return h;
+    }
+
+    function render(events) {
+      if (!events || !events.length) return '<div class="empty-state">表示するイベントがありません</div>';
+      var h = '<div class="cards-container">';
+      events.forEach(function(ev) {
+        h += '<div class="card">';
+        if (ev.type === 'group') {
+          ev.items.forEach(function(item, idx) {
+            h += renderSingleItem(item, idx > 0);
+          });
+          if (ev.staff && ev.staff.length > 0) {
+            h += '<div class="group-staff">' + ev.staff.map(function(s) { return nl2br(s); }).join('<br>') + '</div>';
+          }
+        } else {
+          h += renderSingleItem(ev, false);
+        }
+        h += '</div>';
+      });
+      h += '</div>';
+      return h;
+    }
+
+    var API_URL = 'https://script.google.com/macros/s/AKfycbw9eptavUj0IyFGHpSGOpwOD86ZeuT6JyyZryggRudZxI0QRYVncYmA3z59JLSmFlgKWw/exec';
+
+    fetch(API_URL)
+      .then(function(r) { return r.json(); })
+      .then(function(res) {
+        document.getElementById('content').innerHTML = res.success ? render(res.data) : '<div class="error">' + escapeHtml(res.error) + '</div>';
+      })
+      .catch(function(err) {
+        document.getElementById('content').innerHTML = '<div class="error">データ取得に失敗</div>';
+      });
+  </script>
+</body>
+</html>
