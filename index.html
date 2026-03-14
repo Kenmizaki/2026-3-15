@@ -79,9 +79,6 @@
       word-break: break-word;
     }
 
-    .card.break {
-      background: #e8f5e9;
-    }
 
     .card-title {
       font-size: 20px;
@@ -209,8 +206,8 @@
       if (!events || !events.length) return '<div class="empty-state">表示するイベントがありません</div>';
       var h = '<div class="cards-container">';
       events.forEach(function(ev) {
-        var cardClass = (ev.type !== 'group' && isBreak(ev.program)) ? 'card break' : 'card';
-        h += '<div class="' + cardClass + '">';
+        var bgStyle = ev.color ? ' style="background:' + escapeHtml(ev.color) + '"' : '';
+        h += '<div class="card"' + bgStyle + '>';
         if (ev.type === 'group') {
           ev.items.forEach(function(item, idx) {
             h += renderSingleItem(item, idx > 0);
